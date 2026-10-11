@@ -1,59 +1,87 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Nursery room occupancy
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A small Laravel API for a multi-tenant nursery platform. Staff check a child into a room and check them out when they leave. A manager can ask who is in a room right now.
 
-## About Laravel
+Nursery groups are tenants. A request for one tenant cannot read or change another tenant's rooms, children, or check-ins. Authentication is assumed to be handled already. This service trusts the `X-Tenant-ID` header as the tenant for the request.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Run it
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Requirements: PHP 8.2, Composer, and the SQLite extension.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate
+php artisan serve
+```
 
-## Learning Laravel
+SQLite is the database this project runs on, including the test suite (in memory).
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Endpoints
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Send `X-Tenant-ID` with the tenant's numeric id. `Accept: application/json` is optional; these routes always respond with JSON.
 
-## Laravel Sponsors
+| Method | Path | Body | Success |
+| --- | --- | --- | --- |
+| `POST` | `/rooms/{room}/check-ins` | `{ "child_id": 1 }` | `201` |
+| `POST` | `/check-ins/{id}/check-out` | none | `200` |
+| `GET` | `/rooms/{room}/occupants` | none | `200` |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Occupants are the children with an open check-in (`checked_out_at` is null), oldest check-in first.
 
-### Premium Partners
+### Errors
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| Status | When |
+| --- | --- |
+| `400` | `X-Tenant-ID` is missing, not a number, or not a known tenant |
+| `404` | The room, child, or check-in is not in this tenant, or the check-in is already closed |
+| `409` | The child already has an open check-in |
+| `422` | `child_id` is missing or not an integer |
 
-## Contributing
+A cross-tenant id is `404`, not `403`, so the response does not confirm that the other tenant's record exists.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Tests
 
-## Code of Conduct
+```bash
+php artisan test
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## A child cannot be in two rooms
 
-## Security Vulnerabilities
+If staff check a child into a second room while they are still checked into the first, the API rejects the request with `409 Conflict` and leaves the original visit open. The response includes the room id of that open visit so staff can see where the child already is.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Rejecting is safer than moving the child automatically. An automatic move would hide a missed checkout, which is the mistake a manager is trying to notice. Moving and also returning a warning needs a client to show that warning, and this track has no user interface. The rule is also enforced in the database: a partial unique index allows only one open check-in per child, including when two requests arrive together.
 
-## License
+Checking into the same room twice is the same conflict. After a checkout, the child can be checked in again.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Assumptions
+
+- The caller is already authenticated. This API does not check that the signed-in user belongs to `X-Tenant-ID`.
+- A tenant is a nursery group. Rooms and children belong directly to that tenant. There is no separate nursery site under the group.
+- Ids are integers.
+- Only SQLite is supported. The partial unique index uses SQLite syntax.
+
+## Left out on purpose
+
+- The React room view (Track B).
+- Users, passwords, and sessions.
+- Creating rooms and children over HTTP. Tests and factories insert them. The brief only asks for check-in, check-out, and the occupant list.
+- Pagination, audit history beyond the check-in rows, and an idempotency key.
+
+## With more time
+
+I would record who performed each check-in, add an idempotency key so a retried request cannot double-write, and paginate the occupant list once a room can hold more children than one response should return. I would also stop trusting `X-Tenant-ID` on its own and bind it to the authenticated user.
+
+## Running on AWS with ECS and Fargate
+
+I would run the Laravel application as a container on ECS with Fargate, behind an Application Load Balancer. The image contains PHP, the HTTP server, the application code, and the Composer dependencies. It does not contain secrets or the database. Non-secret settings are environment variables on the task definition. The application key, the database password, and any other credentials come from AWS Secrets Manager and are injected when the task starts. Laravel reads them from the environment. The task role is the only AWS identity the container needs, so the image has no long-lived keys.
+
+The database is RDS in private subnets. The Fargate tasks run in those same private subnets. A security group allows the database port only from the ECS service. Migrations run as a one-off task, not on every web request. Fargate has no durable disk, so SQLite stays in the test suite and production state lives in RDS.
+
+Logs go to CloudWatch in JSON, with the tenant id and the request id on each line. I would page on a rising rate of HTTP 500 responses, unhealthy load-balancer targets, failed deployments, and RDS CPU, storage, or connection failures. A `409` is an expected staff mistake: count it on a dashboard, and do not page on it. I would also alarm when the service cannot open a database connection, because that is the failure that stops a manager from seeing who is in a room.
+
+## How AI tools were used
+
+Cursor, with Grok, drafted the Laravel structure from this brief: models, the tenant middleware, the three actions, and the Pest tests. I kept the `409` decision, the choice to answer cross-tenant lookups with `404`, and the SQLite partial unique index, and I checked the tests against those rules rather than accepting a happy-path-only suite. I did not add a React client or extra packages the brief said to skip.

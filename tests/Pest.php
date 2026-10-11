@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Tenant;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
 
 /*
@@ -14,7 +16,7 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+    ->use(LazilyRefreshDatabase::class)
     ->in('Feature');
 
 /*
@@ -43,7 +45,9 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function asTenant(Tenant $tenant): TestCase
 {
-    // ..
+    return test()->withHeaders([
+        'X-Tenant-ID' => (string) $tenant->id,
+    ]);
 }

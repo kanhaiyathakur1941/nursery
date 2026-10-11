@@ -1,0 +1,172 @@
+---
+description: Laravel 12 and PHP 8.3+ development standards
+alwaysApply: true
+---
+
+# Laravel 12 Development Rules
+
+You are a senior Laravel 12 and PHP engineer. Write secure, maintainable, scalable, production-ready code using modern Laravel and PHP best practices.
+
+## 1. Core Standards
+
+- Use Laravel 12 and PHP 8.3+ features compatible with the project's `composer.json`.
+- Follow PSR-12, SOLID principles, and Laravel conventions.
+- Prefer clean, readable, simple code over unnecessary abstractions.
+- Follow DRY without premature optimization or overengineering.
+- Preserve existing functionality and project architecture.
+- Inspect relevant files before changing code.
+- Never invent APIs, methods, dependencies, or configuration options.
+
+## 2. PHP Standards
+
+- Use explicit parameter types and return types for application methods.
+- Use `declare(strict_types=1);` in new PHP files where appropriate and consistent with project conventions.
+- Use typed properties, constructor property promotion, enums, and readonly properties when beneficial.
+- Use nullable and union types correctly.
+- Follow PSR-12 formatting.
+- Use descriptive class, method, and variable names.
+- Add PHPDoc for complex types and array shapes when native types are insufficient.
+- Avoid unnecessary `mixed`, global state, and static dependencies.
+
+## 3. Laravel Architecture
+
+- Follow Laravel 12's existing directory structure and application bootstrap conventions.
+- Inspect `bootstrap/app.php` before modifying middleware or exception handling.
+- Keep controllers focused on HTTP requests and responses.
+- Use Form Requests for complex validation.
+- Use Eloquent models and relationships for database operations.
+- Use API Resources for structured API responses where appropriate.
+- Use dependency injection instead of manually creating complex dependencies.
+- Create service or action classes when business logic is complex, reusable, or independently testable.
+- Use repositories only when they provide a genuine architectural benefit.
+- Do not make every class `final` or create unnecessary interfaces and abstractions.
+- Keep routes organized and use named routes and route model binding where appropriate.
+
+## 4. Database and Eloquent
+
+- Use Eloquent and Query Builder instead of raw SQL when appropriate.
+- Protect models using `$fillable` or `$guarded`.
+- Define correct relationships, casts, foreign keys, and indexes.
+- Prevent N+1 queries with eager loading.
+- Use pagination for large datasets.
+- Use migrations for schema changes and factories or seeders for repeatable data.
+- Use `DB::transaction()` when multiple operations must succeed or fail together.
+- Consider concurrency, locking, and duplicate processing for critical operations.
+- Never run destructive database commands or reset production data without explicit approval.
+- Never concatenate untrusted input into SQL queries.
+
+## 5. Validation and Security
+
+- Validate all untrusted input on the server.
+- Use Form Requests for complex or reusable validation.
+- Use validated input instead of passing arbitrary request data into business logic.
+- Apply authentication and authorization using Laravel middleware, policies, and gates.
+- Use Laravel Sanctum when appropriate for API tokens or first-party SPA authentication.
+- Protect web forms against CSRF and escape untrusted output to prevent XSS.
+- Prevent mass-assignment vulnerabilities and unauthorized data access.
+- Validate uploaded files, enforce size limits, and protect private files.
+- Use rate limiting for authentication, OTP, payment, and sensitive endpoints.
+- Never hardcode credentials, tokens, API keys, or secrets.
+- Never expose stack traces, sensitive information, or internal errors in production responses.
+- Use `config()` in application code instead of calling `env()` outside configuration files.
+
+## 6. APIs and Integrations
+
+- Follow REST conventions and use appropriate HTTP status codes.
+- Keep API response structures consistent.
+- Use API Resources and API versioning when appropriate.
+- Use Laravel's HTTP client for external HTTP integrations.
+- Configure timeouts, retry policies, and failure handling deliberately.
+- Validate webhook signatures and handle duplicate webhook deliveries safely.
+- Use idempotency protections for payments and other critical operations.
+- Never trust frontend payment success messages; verify payment status with the provider.
+- Document important APIs using OpenAPI or Swagger when required.
+
+## 7. Queues, Events, and Caching
+
+- Use queued jobs for slow or background operations when appropriate.
+- Design jobs to handle retries and duplicate execution safely.
+- Configure timeouts, backoff, and failed-job handling.
+- Use events and listeners to decouple side effects when beneficial.
+- Use Laravel Scheduler for recurring tasks.
+- Use Laravel Cache APIs and Redis when justified by workload and infrastructure.
+- Define cache expiration and invalidation deliberately.
+- Use Laravel Horizon when Redis queues require its monitoring and management features.
+- Do not assume a dispatched job has completed successfully.
+
+## 8. Error Handling and Logging
+
+- Use Laravel's centralized exception handling and reporting.
+- Catch exceptions only when they can be handled meaningfully.
+- Never silently ignore exceptions or use broad catch blocks to hide failures.
+- Create custom exceptions when they communicate meaningful application or domain failures.
+- Log useful context without exposing passwords, tokens, secrets, or unnecessary personal data.
+- Return appropriate, safe error responses.
+- Preserve the original exception when wrapping or rethrowing failures.
+
+## 9. Testing and Code Quality
+
+- Write automated tests for business-critical functionality and bug fixes.
+- Follow the existing PHPUnit or Pest setup.
+- Use feature tests for routes, validation, authentication, and authorization.
+- Use unit tests for isolated business logic when useful.
+- Test success cases, failure cases, invalid input, and authorization boundaries.
+- Fake queues, events, notifications, storage, mail, and HTTP requests when appropriate.
+- Run relevant tests after making changes when tooling is available.
+- Use configured tools such as Larastan/PHPStan and PHP_CodeSniffer when available.
+- Never claim tests passed unless they actually ran successfully.
+- Fix root causes instead of weakening tests to hide failures.
+
+## 10. Performance and Maintainability
+
+- Optimize only when there is a measurable or clear performance need.
+- Avoid N+1 queries, unnecessary database queries, and loading entire large tables into memory.
+- Use chunking, lazy collections, and pagination for large datasets.
+- Cache expensive operations when invalidation can be managed correctly.
+- Keep methods focused and classes cohesive.
+- Avoid duplicated business rules.
+- Do not introduce packages, services, repositories, or interfaces without a clear benefit.
+- Keep Blade templates focused on presentation.
+- Use escaped Blade output for untrusted content.
+- Follow the project's existing frontend tooling and conventions.
+
+## 11. File Naming and Organization
+
+- Models: singular PascalCase, such as `User.php`.
+- Controllers: descriptive PascalCase, such as `OrderController.php`.
+- Form Requests: descriptive names, such as `StoreOrderRequest.php`.
+- API Resources: descriptive names, such as `OrderResource.php`.
+- Jobs, events, listeners, policies, and services: clear names describing their responsibility.
+- Methods and variables: camelCase.
+- Database tables and columns: snake_case.
+- Follow established namespaces and folder structures.
+
+## 12. Cursor Workflow
+
+Before editing:
+
+1. Inspect relevant source files, routes, models, migrations, tests, and configuration.
+2. Confirm framework and PHP compatibility.
+3. Understand existing coding conventions and dependencies.
+4. Identify potential security, compatibility, and data integrity risks.
+
+When editing:
+
+1. Make the smallest complete change that satisfies the request.
+2. Reuse existing project patterns where appropriate.
+3. Do not modify unrelated files.
+4. Add or update validation, authorization, tests, and documentation when needed.
+5. Avoid unnecessary dependency or configuration changes.
+6. Explain important changes and any required manual steps.
+
+After editing:
+
+1. Run relevant tests and code-quality checks when available.
+2. Review the changes for security issues and unintended behavior.
+3. Report which files changed.
+4. Report tests actually executed and their results.
+5. Clearly disclose any unverified assumptions or remaining issues.
+
+## Final Objective
+
+Always generate secure, readable, testable, and production-ready Laravel 12 code. Respect the existing project, use Laravel's native capabilities effectively, and prioritize correctness, maintainability, and security over unnecessary complexity.
